@@ -37,6 +37,9 @@ class Tracker:
         critical_total = self.critical_value(crit_level)
 
         hits = []
+        cumulative_hits = []
+        cumulative_sum = 0
+        
         for _ in range(100):
             offensive_guard_active = random.random() < (og_uptime / 100)
             critical_active = random.random() < (crit_chance / 100)
@@ -50,8 +53,8 @@ class Tracker:
                 hits.append(total_with_og * critical_total / total)
             else:
                 hits.append(total_with_og)
-
-        return sum(hits) / len(hits), sum(hits)
+                
+        return sum(hits) / len(hits), hits
 
     def offensive_guard_boost(self):
         return self.display_sum() * 0.15
@@ -100,57 +103,49 @@ def simulate_and_plot():
         tracker_1 = Tracker(raw_1, cs_1, agi_1)
         tracker_2 = Tracker(raw_2, cs_2, agi_2)
 
-        avg_damage_1, _ = tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1)
-        avg_damage_2, _ = tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2)
+        avg_damage_1, hits1 = tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1)
+        avg_damage_2, hits2 = tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2)
 
-        plot_comparison_graph(avg_damage_1, avg_damage_2)
-        plot_histogram(avg_damage_1, avg_damage_2)
+        plot_histogram(hits1, hits2, avg_damage_1, avg_damage_2)
+        #plot_line_graph(hits1, hits2, avg_damage_1, avg_damage_2)
 
     except ValueError:
         messagebox.showerror("Error", "Please enter valid numerical values.")
 
-def plot_comparison_graph(avg_damage_1, avg_damage_2):
+def plot_histogram(hits1, hits2, avg_damage_1, avg_damage_2):
+    
+    if avg_damage_1 is None or avg_damage_2 is None:
+        messagebox.showerror("Error", "Invalid average damage values.")
+        return
+    
+    # create graph figure
+    fig, axs = plt.subplots(1,2, figsize=(15,6))
+    
+    #histogram for hits
     scenarios = ["Set 1: Avg Damage", "Set 2: Avg Damage"]
     avg_damage_values = [avg_damage_1, avg_damage_2]
-
-    plt.figure(figsize=(10, 6))
-    bars = plt.bar(scenarios, avg_damage_values, color=["blue", "red"])
-
-    for bar in bars:
-        yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2, yval + 10, f'{yval:.2f}', ha='center', va='bottom', fontsize=12)
-
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.title("Simulated Average Damage Comparison", fontsize=14)
-    plt.xlabel("Scenarios", fontsize=12)
-    plt.ylabel("Average Damage per 100 Hits", fontsize=12)
-    plt.xticks(fontsize=11)
-    plt.yticks(fontsize=11)
+    axs[0].bar(scenarios, avg_damage_values, color=['blue', 'red'])
+    axs[0].set_title("Average Damage Comparison", fontsize=14)
+    axs[0].set_ylabel("Average Damage", fontsize=12)
+    axs[0].set_xlabel("Scenarios", fontsize=12)
+    #axs[0].legend()
+    axs[0].grid(True)
+    
+    #line plot
+    cumulative_hits1 = [sum(hits1[:i+1]) for i in range(len(hits1))]
+    cumulative_hits2 = [sum(hits2[:i+1]) for i in range(len(hits2))]
+    
+    axs[1].plot(cumulative_hits1, label='Set 1', color='blue')
+    axs[1].plot(cumulative_hits2, label='Set 2', color='red')
+    axs[1].set_title("Damage per Hit Simulation", fontsize=14)
+    axs[1].set_xlabel("Hit Number", fontsize=12)
+    axs[1].set_ylabel("Damage", fontsize=12)
+    axs[1].legend()
+    axs[1].grid(True)
+    
+    
     plt.tight_layout()
-    plt.show()
-
-def plot_histogram(avg_damage_1, avg_damage_2):
-    hist_window = tk.Toplevel()
-    hist_window.title("Average Damage Comparison Histogram")
-
-    scenarios = ["Set 1: Avg Damage", "Set 2: Avg Damage"]
-    avg_damage_values = [avg_damage_1, avg_damage_2]
-
-    plt.figure(figsize=(10, 6))
-    plt.bar(scenarios, avg_damage_values, color=["blue", "red"])
-
-    for i, value in enumerate(avg_damage_values):
-        plt.text(i, value + 10, f'{value:.2f}', ha='center', va='bottom', fontsize=12)
-
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.title("Average Damage Comparison (Simulated over 100 hits)", fontsize=14)
-    plt.xlabel("Scenarios", fontsize=12)
-    plt.ylabel("Average Damage per 100 Hits", fontsize=12)
-    plt.xticks(fontsize=11)
-    plt.yticks(fontsize=11)
-    plt.tight_layout()
-
-    plt.show()
+    plt.show() 
 
 root = tk.Tk()
 root.title("Stat Tracker")
