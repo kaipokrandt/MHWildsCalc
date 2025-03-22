@@ -1,3 +1,7 @@
+# This script is a damage comparison tool for monster hunter wilds, allowing users to input various parameters
+# it will then graph and compare the damage output of two sets of stats
+
+
 import random
 import tkinter as tk
 from tkinter import messagebox, Toplevel, Canvas
