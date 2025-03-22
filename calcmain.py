@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class Tracker:
-    def __init__(self, raw, cs, agi):
+    def __init__(self, raw, cs_level, agi):
         self.raw = raw
-        self.cs = cs
+        self.cs_level = cs_level
         self.agi = agi
     
     def display_sum(self):
@@ -17,6 +17,10 @@ class Tracker:
         critical_multipliers = {0: 1.25, 1: 1.28, 2: 1.31, 3: 1.34, 4: 1.37, 5: 1.40}
         base_damage = self.display_sum()
         return base_damage * critical_multipliers.get(level, 1.25)
+    
+    def apply_counterstrike(self):
+        counterstrike_buffs = {0: 0, 1: 10, 2: 15, 3:25}
+        return self.raw + counterstrike_buffs.get(self.cs_level, 0)
 
     def apply_attack_boost(self, attack_boost_level):
         if attack_boost_level == 1:
@@ -63,16 +67,16 @@ class Tracker:
 def calculate():
     try:
         raw = int(raw_entry_1.get())
-        cs = int(cs_entry_1.get())
+        cs_level = int(cs_entry_1.get())
         agi = int(agi_entry_1.get())
         crit_level = int(crit_level_entry_1.get())
         attack_boost_level = int(attack_boost_entry_1.get())
         crit_chance = float(crit_chance_entry_1.get())
         og_uptime = float(og_uptime_entry_1.get())
 
-        tracker = Tracker(raw, cs, agi)
+        tracker = Tracker(raw, cs_level, agi)
 
-        total_damage_per_hit = tracker.apply_attack_boost(attack_boost_level) + tracker.cs + tracker.agi
+        total_damage_per_hit = tracker.apply_attack_boost(attack_boost_level) + tracker.apply_counterstrike(cs_level) + tracker.agi
         avg_damage, total_damage = tracker.simulate_hits(crit_chance, crit_level, og_uptime, attack_boost_level)
 
         og_boost = tracker.offensive_guard_boost()
@@ -159,7 +163,7 @@ root.title("Stat Tracker")
 
 entries = [
     ("Raw Damage (Set 1):", 0),
-    ("Counterstrike Damage Buff (Set 1):", 1),
+    ("Counterstrike Level (Set 1):", 1),
     ("Agitator Damage Buff (Set 1):", 2),
     ("Attack Boost Level (Set 1):", 3),
     ("Critical Level (Set 1):", 4),
@@ -168,7 +172,7 @@ entries = [
 ]
 entries_2 = [
     ("Raw Damage (Set 2):", 7),
-    ("Counterstrike Damage Buff (Set 2):", 8),
+    ("Counterstrike Level (Set 2):", 8),
     ("Agitator Damage Buff (Set 2):", 9),
     ("Attack Boost Level (Set 2):", 10),
     ("Critical Level (Set 2):", 11),
