@@ -1,9 +1,13 @@
 import random
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import Toplevel
+from tkinter import Canvas
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from PIL import Image, ImageTk
+import os
 
 class Tracker:
     def __init__(self, raw):
@@ -146,20 +150,25 @@ def simulate_and_plot():
         tracker_1 = Tracker(raw_1)
         tracker_2 = Tracker(raw_2)
 
-        avg_damage_1, hits1 = tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1, counterstrike_level_1, agitator_level_1)
-        avg_damage_2, hits2 = tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2, counterstrike_level_2, agitator_level_2)
+        avg_damage_1, hits1 = tracker_1.simulate_hits(crit_chance_1, crit_level_1, 
+                                                      og_uptime_1, attack_boost_level_1, 
+                                                      counterstrike_level_1, agitator_level_1)
+        avg_damage_2, hits2 = tracker_2.simulate_hits(crit_chance_2, crit_level_2, 
+                                                      og_uptime_2, attack_boost_level_2, 
+                                                      counterstrike_level_2, agitator_level_2)
         
         #simulate variance
-        variance1 = [tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1, counterstrike_level_1, agitator_level_1)[0] for _ in range(100)]
-        variance2 = [tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2, counterstrike_level_2, agitator_level_2)[0] for _ in range(100)]
+        variance1 = [tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1, 
+                                             counterstrike_level_1, agitator_level_1)[0] for _ in range(100)]
+        variance2 = [tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2, 
+                                             counterstrike_level_2, agitator_level_2)[0] for _ in range(100)]
 
-        plot_histogram(hits1, hits2, avg_damage_1, avg_damage_2, variance1, variance2)
-        #plot_line_graph(hits1, hits2, avg_damage_1, avg_damage_2)
+        plot_graphs(hits1, hits2, avg_damage_1, avg_damage_2, variance1, variance2)
 
     except ValueError:
         messagebox.showerror("Error", "Please enter valid numerical values.")
 
-def plot_histogram(hits1, hits2, avg_damage_1, avg_damage_2, variance1, variance2):
+def plot_graphs(hits1, hits2, avg_damage_1, avg_damage_2, variance1, variance2):
     
     if avg_damage_1 is None or avg_damage_2 is None:
         messagebox.showerror("Error", "Invalid average damage values.")
@@ -168,33 +177,126 @@ def plot_histogram(hits1, hits2, avg_damage_1, avg_damage_2, variance1, variance
     # create graph figure
     fig, axs = plt.subplots(1,3, figsize=(15,6))
     
+    
     # 1. histogram for hits
     scenarios = ["Set 1: Avg Damage", "Set 2: Avg Damage"]
     avg_damage_values = [avg_damage_1, avg_damage_2]
-    axs[0].bar(scenarios, avg_damage_values, color=['blue', 'red'])
+    # use seaborn to create a barplot
+    barplot = sns.barplot(x=scenarios, y=avg_damage_values, ax=axs[0], 
+                          hue=scenarios, palette="Blues_d", legend = False)
     axs[0].set_title("Average Damage Comparison", fontsize=14)
     axs[0].set_ylabel("Average Damage", fontsize=12)
     axs[0].set_xlabel("Scenarios", fontsize=12)
-    axs[0].legend()
     
-    # 2. line plot
-    cumulative_hits1 = np.cumsum(hits1)
-    cumulative_hits2 = np.cumsum(hits2)
-    axs[1].plot(cumulative_hits1, label='Set 1', color='blue')
-    axs[1].plot(cumulative_hits2, label='Set 2', color='red')
+    # Annotating the bars inside the bars
+    for p in barplot.patches:
+        height = p.get_height()
+        barplot.annotate(f'{height:.2f}', 
+                          (p.get_x() + p.get_width() / 2., height), 
+                          ha='center', va='center', fontsize=12, color='black', fontweight='bold')
+    
+    
+    # Adding a box below the bar plot with the data used
+    info_text_bar = f"Set 1 Avg Damage: {avg_damage_1:.2f}\nSet 2 Avg Damage: {avg_damage_2:.2f}"
+    axs[0].text(0.5, -0.3, info_text_bar, transform=axs[0].transAxes, ha='center', va='top', fontsize=12, color='black', bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.5'))
+    
+    
+    
+    # 2. line plot for cumulative damage
+    hits1 = np.array(hits1)
+    hits2 = np.array(hits2)
+    
+    # Plot cumulative damage with line style and width adjustments
+    sns.lineplot(x=np.arange(len(hits1)), y=np.cumsum(hits1), ax=axs[1], label='Set 1', 
+                 color='blue', linewidth=2)
+    sns.lineplot(x=np.arange(len(hits2)), y=np.cumsum(hits2), ax=axs[1], label='Set 2', 
+                 color='red', linewidth=2)
+    
     axs[1].set_title("Damage per Hit Simulation", fontsize=14)
     axs[1].set_xlabel("Hit Number", fontsize=12)
-    axs[1].set_ylabel("Damage", fontsize=12)
-    axs[1].legend()
+    axs[1].set_ylabel("Cumulative Damage", fontsize=14)
+    axs[1].tick_params(axis='both', labelsize=12)
+    axs[1].grid(True, axis='both', linestyle='--', alpha=0.7)
+    
+     # 3. Adding colored boxes below the line plot to represent final cumulative values
+    total_cumulative_value_1 = np.cumsum(hits1)[-1]
+    total_cumulative_value_2 = np.cumsum(hits2)[-1]
+    
+    axs[1].text(0.5, -0.3, f'Set 1: Final Total: {total_cumulative_value_1:.2f}', transform=axs[1].transAxes, ha='center', va='top', fontsize=12,
+                bbox=dict(facecolor='blue', alpha=0.7, boxstyle='round,pad=0.5'))
+    
+    axs[1].text(0.5, -0.4, f'Set 2: Final Total: {total_cumulative_value_2:.2f}', transform=axs[1].transAxes, ha='center', va='top', fontsize=12,
+                bbox=dict(facecolor='red', alpha=0.7, boxstyle='round,pad=0.5'))
+    
+    
     
     # 3. variance plot
-    #axs[2].boxplot([variance1, variance2], label=["Set 1", "Set 2"], patch_artist=True)
-    #axs[2].set_title("Variance in Damage Simulation", fontsize=14)
-    #axs[2].set_ylabel("Avg Damage", fontsize=12)
+    sns.boxplot(data=[variance1, variance2], ax=axs[2], palette="Set2")
+    axs[2].set_title("Variance in Damage Simulation", fontsize=14)
+    axs[2].set_ylabel("Damage Variance", fontsize=12)
+    axs[2].set_xticks([0, 1])
+    axs[2].set_xticklabels(["Set 1", "Set 2"], fontsize=12)
+    axs[2].tick_params(axis='both', labelsize=12)
+    axs[2].grid(True, axis='y', linestyle='--', alpha=0.7)
     
+    # Annotating the outliers with numbers
+    outlier_labels = {}
+    for i, data in enumerate([variance1, variance2]):
+        # Getting outliers
+        q1 = np.percentile(data, 25)
+        q3 = np.percentile(data, 75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+        outliers = [x for x in data if x < lower_bound or x > upper_bound]
+        
+        # Assign numbers to outliers and annotate
+        outlier_labels[i] = {}
+        for idx, outlier in enumerate(outliers):
+            outlier_labels[i][idx + 1] = outlier
+            
+            # Find appropriate space for annotation
+            y_position = outlier
+            # Shift the annotation slightly if there's already an annotation at that position
+            shift = 0
+            while any(abs(y_position - existing_pos) < 0.1 for existing_pos in outlier_labels[i].values()):
+                shift += 0.1
+                y_position = outlier + shift
+            
+            axs[2].text(i, y_position, f'{idx + 1}', color='black', fontsize=10, ha='center', va='bottom')
+            outlier_labels[i][idx + 1] = y_position
     
+    # Create information box below boxplot with the outlier values
+    info_text_box = "Outlier values: \n"
+    for i, outliers in outlier_labels.items():
+        for label, value in outliers.items():
+            info_text_box += f"Set {i+1}: Outlier {label} = {value:.2f}\n"
+    
+    axs[2].text(0.5, -0.3, info_text_box, transform=axs[2].transAxes, ha='center', va='top', fontsize=12, 
+                color='black', bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=0.5'))
+    
+    if os.path.exists("damage_simulation.png"):
+        os.remove("damage_simulation.png")
+    # Save the figure
     plt.tight_layout()
-    plt.show() 
+    plt.savefig("damage_simulation.png")
+    open_image_in_new_window()
+    #plt.show() 
+    
+def open_image_in_new_window():
+    img = Image.open("damage_simulation.png")
+    img_tk = ImageTk.PhotoImage(img)
+    
+    # Create a new window to display the image
+    new_window = Toplevel()
+    new_window.title("Damage Simulation Results")
+    
+    canvas = Canvas(new_window, width=img.width, height=img.height)
+    canvas.pack()
+    
+    canvas.create_image(0, 0, anchor="nw", image=img_tk)
+    canvas.image = img_tk  # Keep a reference to avoid garbage collection
+    new_window.mainloop()
 
 root = tk.Tk()
 root.title("Stat Tracker")
