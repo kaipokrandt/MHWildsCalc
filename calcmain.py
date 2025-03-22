@@ -5,22 +5,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class Tracker:
-    def __init__(self, raw, cs_level, agi):
+    def __init__(self, raw, agi):
         self.raw = raw
-        self.cs_level = cs_level
         self.agi = agi
-    
-    def display_sum(self):
-        return self.raw + self.cs + self.agi
 
     def critical_value(self, level):
         critical_multipliers = {0: 1.25, 1: 1.28, 2: 1.31, 3: 1.34, 4: 1.37, 5: 1.40}
         base_damage = self.display_sum()
         return base_damage * critical_multipliers.get(level, 1.25)
     
-    def apply_counterstrike(self):
-        counterstrike_buffs = {0: 0, 1: 10, 2: 15, 3:25}
-        return self.raw + counterstrike_buffs.get(self.cs_level, 0)
+    def apply_counterstrike(self, counterstrike_level):
+        if counterstrike_level == 1:
+            total_raw = self.raw + 10
+        elif counterstrike_level == 2:
+            total_raw = self.raw + 15
+        elif counterstrike_level == 3:
+            total_raw = self.raw + 25
+        else:
+            total_raw = self.raw
+        return total_raw
 
     def apply_attack_boost(self, attack_boost_level):
         if attack_boost_level == 1:
@@ -36,14 +39,15 @@ class Tracker:
         else:
             total_raw = self.raw
         return total_raw
+    
+    def display_sum(self):
+        return self.raw + self.agi
 
-    def simulate_hits(self, crit_chance, crit_level, og_uptime, attack_boost_level):
-        total = self.apply_attack_boost(attack_boost_level)
+    def simulate_hits(self, crit_chance, crit_level, og_uptime, attack_boost_level, counterstrike_level):
+        total = self.apply_attack_boost(attack_boost_level) + self.apply_counterstrike(counterstrike_level)
         critical_total = self.critical_value(crit_level)
 
         hits = []
-        cumulative_hits = []
-        cumulative_sum = 0
         
         for _ in range(100):
             offensive_guard_active = random.random() < (og_uptime / 100)
@@ -67,17 +71,17 @@ class Tracker:
 def calculate():
     try:
         raw = int(raw_entry_1.get())
-        cs_level = int(cs_entry_1.get())
+        counterstrike_level = int(cs_entry_1.get())
         agi = int(agi_entry_1.get())
         crit_level = int(crit_level_entry_1.get())
         attack_boost_level = int(attack_boost_entry_1.get())
         crit_chance = float(crit_chance_entry_1.get())
         og_uptime = float(og_uptime_entry_1.get())
 
-        tracker = Tracker(raw, cs_level, agi)
+        tracker = Tracker(raw, agi)
 
-        total_damage_per_hit = tracker.apply_attack_boost(attack_boost_level) + tracker.apply_counterstrike(cs_level) + tracker.agi
-        avg_damage, total_damage = tracker.simulate_hits(crit_chance, crit_level, og_uptime, attack_boost_level)
+        total_damage_per_hit = tracker.apply_attack_boost(attack_boost_level) + tracker.apply_counterstrike(counterstrike_level) + tracker.agi
+        avg_damage, total_damage = tracker.simulate_hits(crit_chance, crit_level, og_uptime, attack_boost_level, counterstrike_level)
 
         og_boost = tracker.offensive_guard_boost()
 
@@ -90,7 +94,7 @@ def calculate():
 def simulate_and_plot():
     try:
         raw_1 = int(raw_entry_1.get())
-        cs_1 = int(cs_entry_1.get())
+        counterstrike_level_1 = int(cs_entry_1.get())
         agi_1 = int(agi_entry_1.get())
         attack_boost_level_1 = int(attack_boost_entry_1.get())
         crit_level_1 = int(crit_level_entry_1.get())
@@ -98,22 +102,22 @@ def simulate_and_plot():
         og_uptime_1 = float(og_uptime_entry_1.get())
 
         raw_2 = int(raw_entry_2.get())
-        cs_2 = int(cs_entry_2.get())
+        counterstrike_level_2 = int(cs_entry_2.get())
         agi_2 = int(agi_entry_2.get())
         attack_boost_level_2 = int(attack_boost_entry_2.get())
         crit_level_2 = int(crit_level_entry_2.get())
         crit_chance_2 = float(crit_chance_entry_2.get())
         og_uptime_2 = float(og_uptime_entry_2.get())
 
-        tracker_1 = Tracker(raw_1, cs_1, agi_1)
-        tracker_2 = Tracker(raw_2, cs_2, agi_2)
+        tracker_1 = Tracker(raw_1, agi_1)
+        tracker_2 = Tracker(raw_2, agi_2)
 
-        avg_damage_1, hits1 = tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1)
-        avg_damage_2, hits2 = tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2)
+        avg_damage_1, hits1 = tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1, counterstrike_level_1)
+        avg_damage_2, hits2 = tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2, counterstrike_level_2)
         
         #simulate variance
-        variance1 = [tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1)[0] for _ in range(100)]
-        variance2 = [tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2)[0] for _ in range(100)]
+        variance1 = [tracker_1.simulate_hits(crit_chance_1, crit_level_1, og_uptime_1, attack_boost_level_1, counterstrike_level_1)[0] for _ in range(100)]
+        variance2 = [tracker_2.simulate_hits(crit_chance_2, crit_level_2, og_uptime_2, attack_boost_level_2, counterstrike_level_2)[0] for _ in range(100)]
 
         plot_histogram(hits1, hits2, avg_damage_1, avg_damage_2, variance1, variance2)
         #plot_line_graph(hits1, hits2, avg_damage_1, avg_damage_2)
